@@ -86,6 +86,7 @@ I run a *warmup* benchmark for each core in order to get them up
 to speed.
 
 The columns are:
+
     - `freq` - This is the calculated frequence the core is running
         at. You see that the p-cores are running at full 4.1-GHz.
         The e-cores are rated at 2.4-GHz, but the scheduler is
@@ -111,6 +112,7 @@ The columns are:
        
 The algorithms are run twice, with different input sizes. The
 algorithsm are:
+
     - `ai` - A vibe-coded parser on Daniel Lemire's blog.
     - `swar` - A parser with no branches, also vibe coced.
     - `from` - A C++ parser using `from_chars`, from the
@@ -126,6 +128,7 @@ algorithsm are:
        intrinsics.
        
 There are three targers for the `Makefile`:
+
     - `fastip`, the program that benchmarks all the algorithms.
     - `fastai`, which only runs the algorithms examining
       the ones mentioned on the Lemire blog.
