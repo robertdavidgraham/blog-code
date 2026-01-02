@@ -87,52 +87,52 @@ to speed.
 
 The columns are:
 
-    - `freq` - This is the calculated frequence the core is running
+ - `freq` - This is the calculated frequence the core is running
         at. You see that the p-cores are running at full 4.1-GHz.
         The e-cores are rated at 2.4-GHz, but the scheduler is
         keeping them at 1.1-GHz. This is calculated from the next
         two numbers (time and cycles).
-    - `time` - This is the number of nanoseconds it takes to parse
+- `time` - This is the number of nanoseconds it takes to parse
         a single IPv4 address.
-    - `cycle` - This is the number of *clock cycles* it takes to parse
+- `cycle` - This is the number of *clock cycles* it takes to parse
        a single IPv4 address.
-    - `inst` - This is the number of *instructions* executed per
+- `inst` - This is the number of *instructions* executed per
         IP address.
-    - `ipc` - This is the number of *instructions-per-clock-cycle*,
+- `ipc` - This is the number of *instructions-per-clock-cycle*,
        calculated from the previous two numbers. That an algorithm
        can have a 7 IPC is pretty surprising.
-    - `brch` - Numbr of *branches*, of all types (conditional, indirect,
+- `brch` - Numbr of *branches*, of all types (conditional, indirect,
        unconditional, function calls/returns), in the code. **These are
        flaky numbers**, they sometimes work, and sometimes report
        zeroes on the p-core. I don't know why.
-    - `miss` - Number of *branch misses* while running the algorithm,
+- `miss` - Number of *branch misses* while running the algorithm,
        which I suspect is causing a slowdown in these algorithms.
-    - `l1d` - Number of *level-1 cache misses*, which is commonly
+- `l1d` - Number of *level-1 cache misses*, which is commonly
        troublesome for algorithms, but irrelevent here.
        
 The algorithms are run twice, with different input sizes. The
 algorithsm are:
 
-    - `ai` - A vibe-coded parser on Daniel Lemire's blog.
-    - `swar` - A parser with no branches, also vibe coced.
-    - `from` - A C++ parser using `from_chars`, from the
+- `ai` - A vibe-coded parser on Daniel Lemire's blog.
+- `swar` - A parser with no branches, also vibe coced.
+- `from` - A C++ parser using `from_chars`, from the
        same Daniel Lemire post.
-    - `dfa` - Shows the trick of using a regex-style DFA
+- `dfa` - Shows the trick of using a regex-style DFA
        to control parsing.
-    - `fsm` - A vibe coded parser using the *state machine*
+- `fsm` - A vibe coded parser using the *state machine*
        approach.
-    - `fsm2` - A hand-coded parser using the *state machine*
+- `fsm2` - A hand-coded parser using the *state machine*
        approach that matches the same states as in the `dfa`
        parser. This'll make sense if you study it.
-    - `neon` - A vibe coded parser using the SIMD NEON
+- `neon` - A vibe coded parser using the SIMD NEON
        intrinsics.
        
 There are three targers for the `Makefile`:
 
-    - `fastip`, the program that benchmarks all the algorithms.
-    - `fastai`, which only runs the algorithms examining
+- `fastip`, the program that benchmarks all the algorithms.
+- `fastai`, which only runs the algorithms examining
       the ones mentioned on the Lemire blog.
-    - `perfip`, which builds a binary using profiled optimizations.
+- `perfip`, which builds a binary using profiled optimizations.
       This makes some algorithms slower, others faster.
       
    
