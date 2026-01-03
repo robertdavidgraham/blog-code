@@ -12,6 +12,9 @@
     It's totally vibe coded. I understand very little how it works.
     The macOS counters seem unreliable.
  */
+#define _GNU_SOURCE
+#define _POSIX_C_SOURCE 199309L
+
 #include "bench.h"
 
 #include <stdlib.h>
@@ -19,8 +22,8 @@
 #include <stdio.h>
 
 #if defined(__linux__)
-  #include <unistd.h>
   #include <sys/syscall.h>
+  #include <unistd.h>
   #include <sys/ioctl.h>
   #include <linux/perf_event.h>
   #include <time.h>
@@ -114,8 +117,11 @@ static int linux_open_group(struct bench_ctx *c) {
   pe.type = PERF_TYPE_HARDWARE;
   pe.config = PERF_COUNT_HW_CPU_CYCLES;
   c->fd_leader = (int)perf_open(&pe, -1);
-  if (c->fd_leader < 0) return -1;
-
+  if (c->fd_leader < 0) {
+      perror("cycles");
+      return -1;
+  }
+  
   /* instructions */
   memset(&pe,0,sizeof(pe));
   pe.size = sizeof(pe);
@@ -279,7 +285,6 @@ static int mac_init(struct bench_ctx *c){
   if (!ev_cycles||!ev_insn||!ev_brmiss||!ev_branches||!ev_l1d){
     c->kpep_config_free(cfg); c->kpep_db_free(db); return -1;
   }
-    //printf("///////////////\n");
 
     if (c->kpep_config_add_event(cfg,&ev_cycles,0,NULL)!=0) {
         fprintf(stderr, "[-] cycle count disabled\n");
@@ -420,10 +425,11 @@ bench_ctx* bench_start(void) {
   if (!c) return NULL;
 
 #if defined(__linux__)
-  clock_gettime(CLOCK_MONOTONIC, &c->ts0);
-  if (linux_open_group(c) != 0) {
-    linux_close(c); /* time-only */
-  }
+    clock_gettime(CLOCK_MONOTONIC, &c->ts0);
+    if (linux_open_group(c) != 0) {
+        //fprintf(stderr, "[-] failed CPU counters, time only\n");
+        linux_close(c); /* time-only */
+    }
 
 #elif defined(__APPLE__)
     mach_timebase_info(&c->tbi);

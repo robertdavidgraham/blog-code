@@ -10,8 +10,11 @@
 #include <string.h>
 #include <stdio.h>
 #include <time.h>
+
+#if defined(__APPLE__)
 #include <pthread.h>
 #include <unistd.h>
+#endif
 
 
 /*
@@ -84,7 +87,9 @@ run_benchmark(const char *test, size_t N, size_t C, const char *name, PARSER par
             checksum += ip_address;
         }
     }
+#if defined(__APPLE__)
     usleep(100);
+#endif
     bench_result_t counters = bench_stop(ctx);
 
     printf("[%6s] %5.1f-GHz %5.1f-ns %4llu %4llu %4.1f %4llu %4.1f %4.1f    [0x%08x]\n", name,
@@ -111,8 +116,9 @@ static char *
 create_test_case(size_t *length, size_t N, uint64_t seed) {
     size_t i;
     size_t offset = *length;
-    char *test = strdup("");
-    
+    char* test = malloc(1);
+    *test = '\0';
+
     /*
      * Create `N` addresses
      */
@@ -175,8 +181,10 @@ int main(void) {
      * causes the current thread to be moved to a P-core,
      * the performance CPU.
      */
+#if defined(__APPLE__)
     pthread_set_qos_class_self_np(QOS_CLASS_USER_INTERACTIVE, 1);
     usleep(1);
+#endif
     
     /*
      * Run the benchmarks for the performance cores. Do a
@@ -207,8 +215,9 @@ int main(void) {
     /*
      * On macOS, this moves the thread to an efficiency core.
      */
+#if defined(__APPLE__)
     pthread_set_qos_class_self_np(QOS_CLASS_BACKGROUND, 0);
-
+#endif
 
     /*
      * Run the tests for the efficiency cores. This should be
