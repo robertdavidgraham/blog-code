@@ -5,11 +5,11 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-#if !defined(__aarch64__)
-#error "This code is intended for AArch64 (Apple Silicon)."
-#endif
-
+#ifdef __ARM_NEON__
 #include <arm_neon.h>
+#else
+typedef size_t uint8x16_t;
+#endif
 
 // Convert an 8-byte lane containing bytes 0x00 or 0x80 into an 8-bit mask.
 static inline uint32_t byte80_lane_to_mask8(uint64_t lane_bytes)
@@ -24,6 +24,7 @@ static inline uint32_t byte80_lane_to_mask8(uint64_t lane_bytes)
 // Assumes each byte is 0x00 or 0xFF (from vceqq / vcgeq / etc).
 static inline uint32_t neon_cmp_to_mask16(uint8x16_t cmp_ff_or_00)
 {
+#ifdef __ARM_NEON__
     // Turn 0xFF/0x00 into 0x80/0x00 per byte (keep MSB).
     uint8x16_t msb = vshlq_n_u8(vshrq_n_u8(cmp_ff_or_00, 7), 7); // -> 0x80 or 0x00
 
@@ -35,6 +36,9 @@ static inline uint32_t neon_cmp_to_mask16(uint8x16_t cmp_ff_or_00)
     uint32_t mhi = byte80_lane_to_mask8(hi);
 
     return mlo | (mhi << 8);
+#else
+    return 0;
+#endif
 }
 
 static inline int ctz32(uint32_t x)
@@ -51,6 +55,7 @@ static inline int popcnt32(uint32_t x)
 // Parse 1..3 digits from s[pos..pos+len) into 0..255, rejecting leading zeros (except "0").
 static inline bool parse_octet_strict(const unsigned char *s, int pos, int len, unsigned *outv)
 {
+#ifdef __ARM_NEON__
     if ((unsigned)len - 1u > 2u) return false; // len must be 1..3
 
     unsigned v = 0;
@@ -68,12 +73,16 @@ static inline bool parse_octet_strict(const unsigned char *s, int pos, int len, 
     if (v > 255u) return false;
     *outv = v;
     return true;
+#else
+    return false;
+#endif
 }
 
 // Returns bytes consumed INCLUDING terminator (' ' or '\0'), or 0 on error.
 // Writes IPv4 as 0xAABBCCDD (A=first octet).
 size_t parse_ip_neon(const char *buf, size_t maxlen, uint32_t *out)
 {
+#ifdef __ARM_NEON__
     if (!buf || !out) return 0;
 
     // Minimal form: "0.0.0.0\0" => 8 bytes consumed (7 chars + NUL)
@@ -158,5 +167,8 @@ size_t parse_ip_neon(const char *buf, size_t maxlen, uint32_t *out)
 
     // bytes consumed includes the terminator
     return (size_t)term_i + 1u;
+#else
+    return 0;
+#endif
 }
 

@@ -16,6 +16,7 @@
 
 #include <stdlib.h>
 #include <string.h>
+#include <stdio.h>
 
 #if defined(__linux__)
   #include <unistd.h>
@@ -218,9 +219,17 @@ static void* mac_find_event(struct bench_ctx *c, void *db, const char *const *na
 }
 
 static int mac_init(struct bench_ctx *c){
-  c->h_kperf     = dlopen("/System/Library/PrivateFrameworks/kperf.framework/kperf", RTLD_LAZY);
-  c->h_kperfdata = dlopen("/System/Library/PrivateFrameworks/kperfdata.framework/kperfdata", RTLD_LAZY);
-  if (!c->h_kperf || !c->h_kperfdata) return -1;
+    c->h_kperf     = dlopen("/System/Library/PrivateFrameworks/kperf.framework/kperf", RTLD_LAZY);
+    if (c->h_kperf == NULL) {
+        perror("/System/Library/PrivateFrameworks/kperf.framework/kperf");
+        return -1;
+    }
+    c->h_kperfdata = dlopen("/System/Library/PrivateFrameworks/kperfdata.framework/kperfdata", RTLD_LAZY);
+    if (c->h_kperfdata == NULL) {
+        perror("/System/Library/PrivateFrameworks/kperfdata.framework/kperfdata");
+        return -1;
+    }
+
 
   if (dlsym_req(c->h_kperf,"kpc_force_all_ctrs_get",(void**)&c->kpc_force_all_ctrs_get)) return -1;
   if (dlsym_req(c->h_kperf,"kpc_force_all_ctrs_set",(void**)&c->kpc_force_all_ctrs_set)) return -1;
@@ -229,7 +238,6 @@ static int mac_init(struct bench_ctx *c){
   if (dlsym_req(c->h_kperf,"kpc_get_thread_counters",(void**)&c->kpc_get_thread_counters)) return -1;
   if (dlsym_req(c->h_kperf,"kpc_set_config",(void**)&c->kpc_set_config)) return -1;
   if (dlsym_req(c->h_kperf,"kpc_get_counter_count",(void**)&c->kpc_get_counter_count)) return -1;
-
   if (dlsym_req(c->h_kperfdata,"kpep_db_create",(void**)&c->kpep_db_create)) return -1;
   if (dlsym_req(c->h_kperfdata,"kpep_db_free",(void**)&c->kpep_db_free)) return -1;
   if (dlsym_req(c->h_kperfdata,"kpep_db_event",(void**)&c->kpep_db_event)) return -1;
@@ -258,7 +266,9 @@ static int mac_init(struct bench_ctx *c){
   static const char *insn_names[]   = {"FIXED_INSTRUCTIONS","INST_RETIRED.ANY",NULL};
   static const char *brmiss_names[] = {"BRANCH_MISPRED_NONSPEC","BRANCH_MISPREDICT","BR_MISP_RETIRED.ALL_BRANCHES","BR_INST_RETIRED.MISPRED",NULL};
   static const char *branches_names[] = {"INST_BRANCH","BR_INST_RETIRED.ALL_BRANCHES","BR_INST_RETIRED.ALL_BRANCHES_PS",NULL};
-  static const char *l1d_names[]    = {"DCACHE_LOAD_MISS","L1D_CACHE_MISS_LD_NONSPEC","L1D_CACHE_MISS_LD","L1D_CACHE_MISS","MEM_LOAD_RETIRED.L1_MISS","L1D.REPLACEMENT",NULL};
+  static const char *l1d_names[]    = {"L1D_CACHE_MISS_LD",
+      "DCACHE_LOAD_MISS","L1D_CACHE_MISS_LD_NONSPEC","L1D_CACHE_MISS_LD","L1D_CACHE_MISS","MEM_LOAD_RETIRED.L1_MISS","L1D.REPLACEMENT",
+      "CYCLE_ACTIVITY.STALLS_L1D_MISS", NULL};
 
   void *ev_cycles   = mac_find_event(c, db, cycles_names);
   void *ev_insn     = mac_find_event(c, db, insn_names);
@@ -269,14 +279,24 @@ static int mac_init(struct bench_ctx *c){
   if (!ev_cycles||!ev_insn||!ev_brmiss||!ev_branches||!ev_l1d){
     c->kpep_config_free(cfg); c->kpep_db_free(db); return -1;
   }
+    //printf("///////////////\n");
 
-  if (c->kpep_config_add_event(cfg,&ev_cycles,0,NULL)!=0 ||
-      c->kpep_config_add_event(cfg,&ev_insn,0,NULL)!=0 ||
-      c->kpep_config_add_event(cfg,&ev_brmiss,0,NULL)!=0 ||
-      c->kpep_config_add_event(cfg,&ev_branches,0,NULL)!=0 ||
-      c->kpep_config_add_event(cfg,&ev_l1d,0,NULL)!=0) {
-    c->kpep_config_free(cfg); c->kpep_db_free(db); return -1;
-  }
+    if (c->kpep_config_add_event(cfg,&ev_cycles,0,NULL)!=0) {
+        fprintf(stderr, "[-] cycle count disabled\n");
+    }
+    if (c->kpep_config_add_event(cfg,&ev_insn,0,NULL)!=0) {
+        fprintf(stderr, "[-] instruction count disabled\n");
+    }
+    if (c->kpep_config_add_event(cfg,&ev_brmiss,0,NULL)!=0) {
+        fprintf(stderr, "[-] branch miss disabled\n");
+    }
+    if (c->kpep_config_add_event(cfg,&ev_branches,0,NULL)!=0) {
+        fprintf(stderr, "[-] branch count disabled\n");
+    }
+    if (c->kpep_config_add_event(cfg,&ev_l1d,0,NULL)!=0) {
+        //c->kpep_config_free(cfg); c->kpep_db_free(db); return -1;
+        //fprintf(stderr, "[-] ltd miss disabled\n");
+    }
 
   if (c->kpep_config_kpc_classes(cfg,&c->classes)!=0) { c->kpep_config_free(cfg); c->kpep_db_free(db); return -1; }
   if (c->kpep_config_kpc_count(cfg,&c->reg_count)!=0) { c->kpep_config_free(cfg); c->kpep_db_free(db); return -1; }
@@ -406,11 +426,12 @@ bench_ctx* bench_start(void) {
   }
 
 #elif defined(__APPLE__)
-  mach_timebase_info(&c->tbi);
+    mach_timebase_info(&c->tbi);
     if (mac_init(c) != 0) {
-      mac_unload(c); /* time-only */
-    }
-  c->t0 = mach_absolute_time();
+        fprintf(stderr, "mac_init(): failed\n");
+        mac_unload(c); /* time-only */
+        }
+    c->t0 = mach_absolute_time();
 
 #elif defined(_WIN32)
   QueryPerformanceFrequency(&c->qpc_freq);

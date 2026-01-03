@@ -153,7 +153,7 @@ parse_octet_last(const uint8_t *p, uint32_t *val, uint32_t *ndigits, uint8_t *te
 
 
 size_t
-parse_ip_swar(const char *s, size_t , uint32_t *out) {
+parse_ip_swar(const char *s, size_t len, uint32_t *out) {
 
     const uint8_t *p = (uint8_t*)s;
     uint32_t err = 0;
