@@ -108,9 +108,9 @@ static int linux_open_group(struct bench_ctx *c) {
   memset(&pe,0,sizeof(pe));
   pe.size = sizeof(pe);
   pe.disabled = 1;
-  pe.exclude_kernel = 1;
-  pe.exclude_hv = 1;
-  pe.inherit = 0;
+  pe.exclude_kernel = 1; /* user-space only */
+  pe.exclude_hv = 1; /* ignore hypervisor */
+  pe.inherit = 0; /* don't count child threads */
   pe.read_format = PERF_FORMAT_GROUP;
 
   /* leader: cycles */
@@ -118,7 +118,7 @@ static int linux_open_group(struct bench_ctx *c) {
   pe.config = PERF_COUNT_HW_CPU_CYCLES;
   c->fd_leader = (int)perf_open(&pe, -1);
   if (c->fd_leader < 0) {
-      perror("cycles");
+      //perror("cycles");
       return -1;
   }
   
